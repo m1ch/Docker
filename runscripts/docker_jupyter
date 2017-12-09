@@ -1,0 +1,107 @@
+#/bin/bash
+
+IMAGE_NAME="m1ch/jupyter:latest"
+CONT_NAME="jupyter"
+DOCKER="https://github.com/m1ch/Docker.git#master:x64/jupyter"
+USER="root"
+JP_HOME="$HOME/.jupyter"
+NB_HOME="$HOME/.jupyter/nodebooks"
+RUN_OPT="-it \
+      --user ${USER} \
+      --name ${CONT_NAME} \
+      -p 8888:8888 \
+      --cpus 4 \
+      -c 95 \
+      -m 10G \
+      --memory-swap 10G \
+      -v /etc/localtime:/etc/localtime:ro \
+      -v /etc/timezone:/etc/timezone:ro \
+      -v ${NB_HOME}:/notebooks:rw \
+      -v ${JP_HOME}:/jp_config:rw \
+      -e 'LD_LIBRARY_PATH=/usr/local/lib'"
+
+RUN_CMD="jupyter notebook \
+      --notebook-dir=/notebooks \
+      --config=/jp_config/jupyter_notebook_config.json \
+      --ip='*' \
+      --port=8888 \
+      --no-browser \
+      --allow-root "
+
+if [ ! -e $NB_HOME ]; then
+  mkdir -p $NB_HOME;
+fi
+
+case "$1" in
+start)
+  if [ -z `docker ps --all=true --quiet --filter=name=${CONT_NAME}` ] ; then
+    if [ -z `docker images -q $IMAGE_NAME` ]; then
+      echo "Image '${IMAGE_NAME}' doesn't exist, try to build it"
+      $0 build
+    fi
+
+    echo "Container '${CONT_NAME}' doesn't exist yet, creating and starting it"
+    $0 run
+  else
+    echo "Container '${CONT_NAME}' already exists, starting it"
+    docker restart ${CONT_NAME}
+  fi
+  exit 0
+  ;;
+run)
+  docker run $RUN_OPT ${IMAGE_NAME} /bin/bash -c "${RUN_CMD}"
+  exit 0
+  ;;
+connect)
+  docker exec -it ${IMAGE_NAME} bash
+  exit 0
+  ;;
+stop)
+  docker stop ${CONT_NAME}
+  exit 0
+  ;;
+restart)
+  docker restart ${CONT_NAME}
+  exit 0
+  ;;
+build)
+  if [ ! -z `docker images -q $IMAGE_NAME` ]; then
+    echo "Image '${IMAGE_NAME}' does exist, can't build it"
+    exit 0
+  fi
+  docker build -t ${IMAGE_NAME} ${DOCKER}
+  exit 0
+  ;;
+rebuild)
+  $0 clean
+  $0 build
+  exit 0
+  ;;
+rm)
+  $0 stop
+  docker rm -f ${CONT_NAME}
+  exit 0
+  ;;
+clean)
+  $0 stop
+  docker rm -f ${CONT_NAME}
+  docker rmi -f ${IMAGE_NAME}
+  exit 0
+  ;;
+esac
+
+cat << EOF
+start    - Start the Docker container. Build it if it does not exist 
+run      - Start the Docker container. 
+stop     - Stop  the Docker container. 
+restart  - Restart the Docker container
+build    - Build the Docker image.
+rebuild  - Clean image and container and build the image.
+rm       - Remove the container.
+clean    - Remove image and container.
+connect  - Connect a shell to the container.
+
+EOF
+
+exit 0
+

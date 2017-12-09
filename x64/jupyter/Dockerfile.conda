@@ -1,0 +1,51 @@
+FROM continuumio/anaconda
+MAINTAINER M1CH
+
+RUN apt update && \
+    apt upgrade --assume-yes && \
+    apt --assume-yes install tmux build-essential gcc g++ make binutils libgfortran3
+
+
+#RUN echo deb http://www.deb-multimedia.org testing main non-free \
+#        >>/etc/apt/sources.list && \
+#    apt update && \
+#    apt --assume-yes install deb-multimedia-keyring && \
+#    apt update && \
+#    apt upgrade --assume-yes && \
+#    apt --assume-yes install tmux build-essential gcc g++ make binutils ffmpeg && \
+#    apt clean
+
+RUN pip install jupyter ipykernel ahkab keras theano bcolz pandas
+
+#RUN wget "http://platform.ai/files/cudnn.tgz" -O "cudnn.tgz" && \
+#    tar -zxf cudnn.tgz && \
+#    cp cuda/lib64/* /usr/local/cuda/lib64/ && \
+#    cp cuda/include/* /usr/local/cuda/include/ && \
+#    rm -rf cudnn.tgz cuda
+
+RUN echo "[global]" > ~/.theanorc && \
+    echo "device = cpu" >> ~/.theanorc && \
+    echo "floatX = float32" >> ~/.theanorc && \
+    mkdir ~/.keras && \
+    echo '{' > ~/.keras/keras.json && \
+    echo '  "image_dim_ordering": "th",' >> ~/.keras/keras.json && \
+    echo '  "epsilon": 1e-07,' >> ~/.keras/keras.json && \
+    echo '  "floatx": "float32",' >> ~/.keras/keras.json && \
+    echo '  "backend": "theano"' >> ~/.keras/keras.json && \
+    echo '}' >> ~/.keras/keras.json
+
+RUN mkdir -p /opt/notebooks
+
+ADD jupyter.sh /usr/local/bin/jupyter.sh
+
+RUN chmod +x /usr/local/bin/jupyter.sh
+
+ENV PATH /opt/conda/bin:$PATH
+#ENV jup_cmd "/opt/conda/bin/jupyter notebook --notebook-dir=/opt/notebooks --ip='*' --port=8888 --no-browser"
+
+#CMD 'bash -c "/opt/conda/bin/jupyter notebook --notebook-dir=/opt/notebooks --ip=* --port=8888 --no-browser"'
+
+# CMD ["/usr/local/bin/jupyter.sh"]
+
+CMD [ 'bash']
+
